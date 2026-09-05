@@ -401,6 +401,16 @@ input::placeholder {
   text-decoration: none;
 }
 
+/* Task time display */
+
+.task-time-display {
+  margin-left: auto;
+  margin-right: 20px;
+  color: #8d928a;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 /* Task actions */
 
 .task-actions {

@@ -129,11 +129,13 @@ function Dashboard({ session, onAnalytics }) {
     await loadTasks()
   }
 
-  async function editTask(task, newTitle) {
+  async function editTask(task, newTitle, startTime, endTime) {
     const { error } = await supabase
       .from('tasks')
       .update({
-        title: newTitle
+        title: newTitle,
+        start_time: startTime || null,
+        end_time: endTime || null
       })
       .eq('id', task.id)
 
