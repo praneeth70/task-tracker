@@ -599,6 +599,78 @@ input::placeholder {
 }
 
 /* =========================
+   FOCUS TIMER
+========================= */
+
+.focus-section {
+  margin-top: 70px;
+  padding: 0;
+}
+
+.focus-section .eyebrow {
+  margin-bottom: 18px;
+}
+
+.focus-timer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.focus-timer strong {
+  min-width: 150px;
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: #d8ddd4;
+}
+
+.focus-timer select {
+  width: 190px;
+  padding: 10px 12px;
+  border: 1px solid #383c37;
+  border-radius: 0;
+  background: #171917;
+  color: #c8cdc5;
+  font-size: 14px;
+}
+
+.focus-timer select:focus {
+  outline: none;
+  border-color: #a9b89a;
+}
+
+.focus-timer button {
+  min-width: 75px;
+  padding: 10px 18px;
+  border: 1px solid #383c37;
+  border-radius: 0;
+  background: transparent;
+  color: #c8d6b8;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.focus-timer button:hover {
+  background: #1c1f1b;
+}
+
+.focus-timer button:active {
+  background: #252923;
+}
+
+.focused-today {
+  margin-top: 18px;
+  color: #777c75;
+  font-size: 14px;
+}
+
+.focused-today strong {
+  color: #aeb5aa;
+  font-weight: 500;
+}
+
+/* =========================
    DASHBOARD SECTIONS
 ========================= */
 
@@ -969,6 +1041,37 @@ input::placeholder {
   .add-task button {
     flex: 0 0 75px;
     min-width: 75px;
+  }
+
+  .focus-section {
+    margin-top: 55px;
+  }
+
+  .focus-timer {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .focus-timer strong {
+    flex: 1 0 100%;
+    min-width: 0;
+    font-size: 36px;
+  }
+
+  .focus-timer select {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .focus-timer button {
+    min-height: 44px;
+  }
+
+  .focused-today {
+    margin-top: 16px;
   }
 
   .analytics {
