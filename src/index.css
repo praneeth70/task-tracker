@@ -940,30 +940,34 @@ input::placeholder {
   }
 
   .add-task {
-    flex-direction: row;
-    flex-wrap: wrap;
+    display: flex;
+    flex-wrap: wrap !important;
+    flex-direction: row !important;
+    align-items: stretch;
   }
 
   .add-task input:first-child {
-    flex: 1 1 100%;
+    flex: 1 0 100% !important;
+    width: 100% !important;
     min-width: 0;
     border-bottom: 1px solid #292c28;
   }
 
   .add-task .task-time {
-    flex: 1;
-    width: auto;
+    flex: 1 1 0 !important;
+    width: 0 !important;
     min-width: 0;
     padding: 14px 10px;
     border-left: 0;
   }
 
   .add-task .time-separator {
-    width: 28px;
     flex: 0 0 28px;
+    width: 28px;
   }
 
   .add-task button {
+    flex: 0 0 75px;
     min-width: 75px;
   }
 
