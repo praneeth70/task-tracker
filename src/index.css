@@ -334,10 +334,17 @@ input::placeholder {
   gap: 20px;
   border-top: 1px solid #292c28;
   padding: 0 6px;
+  transition: background 0.15s;
 }
 
 .task:last-child {
   border-bottom: 1px solid #292c28;
+}
+
+/* Focus task */
+
+.task.focus-task {
+  background: #121411;
 }
 
 /* Checkbox */
@@ -415,6 +422,20 @@ input::placeholder {
   opacity: 1;
 }
 
+/* Focus button */
+
+.focus-button {
+  color: #777c75;
+  transition: color 0.15s, opacity 0.15s;
+}
+
+.focus-button:hover,
+.focus-button.active {
+  color: #c8d6b8;
+}
+
+/* Edit */
+
 .task-edit-input {
   flex: 1;
   background: transparent;
@@ -457,32 +478,49 @@ input::placeholder {
 
 .add-task {
   display: flex;
-  gap: 10px;
   margin-top: 30px;
   margin-bottom: 10px;
+  border: 1px solid #383c37;
+  background: #171917;
+  transition: border-color 0.15s;
+}
+
+.add-task:focus-within {
+  border-color: #a9b89a;
 }
 
 .add-task input {
   flex: 1;
+  min-width: 0;
+  padding: 15px 16px;
+  border: 0;
+  background: transparent;
+}
+
+.add-task input:focus {
+  border: 0;
 }
 
 .add-task button {
   width: auto;
-  padding: 0 28px;
+  min-width: 90px;
+  padding: 0 18px;
   border: 0;
-  border-radius: 2px;
-  background: #c8d6b8;
-  color: #151713;
-  font-weight: 600;
+  border-left: 1px solid #292c28;
+  border-radius: 0;
+  background: transparent;
+  color: #8d928a;
+  font-size: 14px;
   cursor: pointer;
 }
 
 .add-task button:hover {
-  background: #d5e0c9;
+  background: #1c1f1b;
+  color: #c8d6b8;
 }
 
 .add-task button:disabled {
-  opacity: 0.6;
+  opacity: 0.4;
   cursor: default;
 }
 
@@ -828,11 +866,11 @@ input::placeholder {
   }
 
   .add-task {
-    flex-direction: column;
+    flex-direction: row;
   }
 
   .add-task button {
-    min-height: 48px;
+    min-width: 75px;
   }
 
   .analytics {

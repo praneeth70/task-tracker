@@ -5,6 +5,7 @@ function TaskList({
   onToggle,
   onEdit,
   onDelete,
+  onFocus,
   locked = false
 }) {
   return (
@@ -16,6 +17,7 @@ function TaskList({
           onToggle={onToggle}
           onEdit={onEdit}
           onDelete={onDelete}
+          onFocus={onFocus}
           locked={locked}
         />
       ))}

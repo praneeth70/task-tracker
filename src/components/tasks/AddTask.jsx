@@ -8,7 +8,7 @@ function AddTask({ userId, taskDate, onTaskAdded }) {
   async function handleSubmit(e) {
     e.preventDefault()
 
-    if (!title.trim()) return
+    if (!title.trim() || loading) return
 
     setLoading(true)
 
@@ -23,7 +23,7 @@ function AddTask({ userId, taskDate, onTaskAdded }) {
     setLoading(false)
 
     if (error) {
-      console.error(error)
+      console.error('ADD TASK FAILED:', error)
       return
     }
 
@@ -37,10 +37,12 @@ function AddTask({ userId, taskDate, onTaskAdded }) {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="What needs to get done?"
+        autoComplete="off"
+        disabled={loading}
       />
 
-      <button type="submit" disabled={loading}>
-        {loading ? 'Adding...' : 'Add'}
+      <button type="submit" disabled={loading || !title.trim()}>
+        {loading ? '...' : 'Enter ↵'}
       </button>
     </form>
   )

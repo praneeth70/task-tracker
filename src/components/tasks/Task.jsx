@@ -5,6 +5,7 @@ function Task({
   onToggle,
   onEdit,
   onDelete,
+  onFocus,
   locked = false
 }) {
   const [editing, setEditing] = useState(false)
@@ -47,7 +48,7 @@ function Task({
   }
 
   return (
-    <div className="task">
+    <div className={`task ${task.is_focus ? 'focus-task' : ''}`}>
 
       <input
         type="checkbox"
@@ -72,6 +73,16 @@ function Task({
 
       {!locked && !editing && (
         <div className="task-actions">
+
+          <button
+            type="button"
+            className={`focus-button ${task.is_focus ? 'active' : ''}`}
+            onClick={() => onFocus(task)}
+            title={task.is_focus ? 'Remove from focus' : 'Add to focus'}
+          >
+            {task.is_focus ? '★' : '☆'}
+          </button>
+
           <button
             type="button"
             onClick={startEditing}
@@ -87,6 +98,7 @@ function Task({
           >
             🗑️
           </button>
+
         </div>
       )}
 

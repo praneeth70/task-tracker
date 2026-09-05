@@ -91,6 +91,44 @@ function Dashboard({ session, onAnalytics }) {
     loadTasks()
   }
 
+  async function toggleFocus(task) {
+    if (task.is_focus) {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ is_focus: false })
+        .eq('id', task.id)
+
+      if (error) {
+        console.error('FOCUS UPDATE FAILED:', error)
+        return
+      }
+
+      await loadTasks()
+      return
+    }
+
+    const focusCount = tasks.filter(
+      task => task.is_focus
+    ).length
+
+    if (focusCount >= 3) {
+      window.alert('You can only have 3 focus tasks.')
+      return
+    }
+
+    const { error } = await supabase
+      .from('tasks')
+      .update({ is_focus: true })
+      .eq('id', task.id)
+
+    if (error) {
+      console.error('FOCUS UPDATE FAILED:', error)
+      return
+    }
+
+    await loadTasks()
+  }
+
   async function editTask(task, newTitle) {
     const { error } = await supabase
       .from('tasks')
@@ -155,6 +193,12 @@ function Dashboard({ session, onAnalytics }) {
   const progress = totalTasks === 0
     ? 0
     : Math.round((completedTasks / totalTasks) * 100)
+
+  // Sort tasks: focus tasks first, then non-focus tasks
+  const sortedTasks = [
+    ...tasks.filter(task => task.is_focus),
+    ...tasks.filter(task => !task.is_focus)
+  ]
 
   return (
     <>
@@ -226,10 +270,11 @@ function Dashboard({ session, onAnalytics }) {
           </div>
 
           <TaskList
-            tasks={tasks}
+            tasks={sortedTasks}
             onToggle={toggleTask}
             onEdit={editTask}
             onDelete={deleteTask}
+            onFocus={toggleFocus}
             locked={!isEditable}
           />
 
