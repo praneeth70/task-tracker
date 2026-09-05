@@ -460,6 +460,41 @@ input::placeholder {
   border-color: #c8d8b8;
 }
 
+/* Edit area */
+
+.task-edit-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.task-edit-area .task-edit-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-edit-times {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.task-edit-times input {
+  width: 125px;
+  padding: 8px 6px;
+}
+
+.task-edit-times span {
+  color: #8d928a;
+}
+
+.task-edit-times button {
+  padding: 8px 12px;
+}
+
 /* Delete */
 
 .delete-task {
@@ -488,6 +523,9 @@ input::placeholder {
 
 .add-task {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
   margin-top: 30px;
   margin-bottom: 10px;
   border: 1px solid #383c37;
@@ -499,7 +537,7 @@ input::placeholder {
   border-color: #a9b89a;
 }
 
-.add-task input {
+.add-task input:first-child {
   flex: 1;
   min-width: 0;
   padding: 15px 16px;
@@ -507,13 +545,39 @@ input::placeholder {
   background: transparent;
 }
 
-.add-task input:focus {
+.add-task input:first-child:focus {
   border: 0;
+}
+
+.add-task .task-time {
+  flex: 0 0 125px;
+  width: 125px;
+  min-width: 0;
+  padding: 15px 10px;
+  border: 0;
+  border-left: 1px solid #292c28;
+  background: transparent;
+  color: #d8ddd4;
+}
+
+.add-task .task-time:focus {
+  border-color: #a9b89a;
+}
+
+.add-task .time-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  flex: 0 0 28px;
+  color: #8d928a;
+  background: #171917;
 }
 
 .add-task button {
   width: auto;
   min-width: 90px;
+  height: 100%;
   padding: 0 18px;
   border: 0;
   border-left: 1px solid #292c28;
@@ -877,6 +941,26 @@ input::placeholder {
 
   .add-task {
     flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .add-task input:first-child {
+    flex: 1 1 100%;
+    min-width: 0;
+    border-bottom: 1px solid #292c28;
+  }
+
+  .add-task .task-time {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    padding: 14px 10px;
+    border-left: 0;
+  }
+
+  .add-task .time-separator {
+    width: 28px;
+    flex: 0 0 28px;
   }
 
   .add-task button {
@@ -940,5 +1024,26 @@ input::placeholder {
 
   .analytics-chart {
     margin-top: 50px;
+  }
+
+  .task-edit-area {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .task-edit-times {
+    display: flex;
+    width: 100%;
+  }
+
+  .task-edit-times input {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+
+  .task-edit-times button {
+    padding: 8px 10px;
   }
 }
