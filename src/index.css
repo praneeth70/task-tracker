@@ -1209,3 +1209,193 @@ input::placeholder {
     font-size: 10px;
   }
 }
+
+/* =========================
+   VISIBILITY / CONTRAST PASS
+   CSS-only: no layout or functionality changes
+========================= */
+
+.date-navigation button,
+.date-navigation input {
+  border-color: #596052;
+  background: #1b1e1a;
+}
+
+.date-navigation button {
+  color: #d9e8c8;
+  font-weight: 600;
+}
+
+.date-navigation input {
+  color: #f2f3ef;
+  font-weight: 500;
+  color-scheme: dark;
+}
+
+.date-navigation button:hover,
+.date-navigation input:hover {
+  border-color: #a9b89a;
+  background: #222720;
+}
+
+.date-navigation button:focus-visible,
+.date-navigation input:focus-visible {
+  outline: 2px solid #a9b89a;
+  outline-offset: 2px;
+}
+
+.focus-timer select {
+  border-color: #596052;
+  background: #1b1e1a;
+  color: #f0f2ed;
+  font-weight: 500;
+  color-scheme: dark;
+}
+
+.focus-timer select:hover {
+  border-color: #a9b89a;
+  background: #222720;
+}
+
+.focus-timer select:focus-visible,
+.focus-timer button:focus-visible {
+  outline: 2px solid #a9b89a;
+  outline-offset: 2px;
+}
+
+.focus-timer button {
+  border-color: #596052;
+  background: #1b1e1a;
+  color: #d9e8c8;
+  font-weight: 600;
+}
+
+.focus-timer button:hover {
+  border-color: #a9b89a;
+  background: #222720;
+}
+
+.analytics-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid #454a43;
+  background: #171a17;
+  color: #c8d6b8;
+  font-weight: 500;
+}
+
+.analytics-back:hover {
+  border-color: #a9b89a;
+  background: #222720;
+  color: #f0f2ed;
+}
+
+.analytics-back:focus-visible {
+  outline: 2px solid #a9b89a;
+  outline-offset: 2px;
+}
+
+.analytics-dates label span {
+  color: #aeb5aa;
+  font-weight: 600;
+}
+
+.analytics-dates input[type="date"] {
+  background: #1b1e1a;
+  border-color: #596052;
+  color: #f0f2ed;
+  font-weight: 500;
+}
+
+.analytics-dates input[type="date"]:hover,
+.analytics-dates input[type="date"]:focus {
+  border-color: #a9b89a;
+  background: #222720;
+}
+
+.analytics-dates input[type="date"]:focus-visible {
+  outline: 2px solid #a9b89a;
+  outline-offset: 2px;
+}
+
+.analytics-dates input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  filter: brightness(1.25);
+}
+
+/* Make secondary labels easier to read without changing hierarchy. */
+.focused-today,
+.analytics-chart .chart-header span,
+.consistency-header span {
+  color: #a0a79e;
+}
+
+/* Keyboard visibility for the main interactive controls. */
+.analytics-button:focus-visible,
+.header-right button:focus-visible {
+  outline: 2px solid #a9b89a;
+  outline-offset: 2px;
+}
+
+
+/* =========================
+   TIME INPUT VISIBILITY
+========================= */
+
+.add-task .task-time,
+.task-edit-times input[type="time"] {
+  color: #e9e9e7;
+  background: #1b1e1b;
+  border: 1px solid #4b5149;
+  color-scheme: light;
+  opacity: 1;
+}
+
+.add-task .task-time::placeholder,
+.task-edit-times input[type="time"]::placeholder {
+  color: #aeb5aa;
+  opacity: 1;
+}
+
+.add-task .task-time::-webkit-datetime-edit,
+.task-edit-times input[type="time"]::-webkit-datetime-edit {
+  color: #e9e9e7;
+}
+
+.add-task .task-time::-webkit-datetime-edit-fields-wrapper,
+.task-edit-times input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+  color: #e9e9e7;
+}
+
+.add-task .task-time::-webkit-datetime-edit-text,
+.add-task .task-time::-webkit-datetime-edit-hour-field,
+.add-task .task-time::-webkit-datetime-edit-minute-field,
+.add-task .task-time::-webkit-datetime-edit-ampm-field,
+.task-edit-times input[type="time"]::-webkit-datetime-edit-text,
+.task-edit-times input[type="time"]::-webkit-datetime-edit-hour-field,
+.task-edit-times input[type="time"]::-webkit-datetime-edit-minute-field,
+.task-edit-times input[type="time"]::-webkit-datetime-edit-ampm-field {
+  color: #e9e9e7;
+}
+
+.add-task .task-time::-webkit-calendar-picker-indicator,
+.task-edit-times input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  cursor: pointer;
+  filter: invert(1) sepia(8%) saturate(250%) hue-rotate(55deg) brightness(90%);
+}
+
+.add-task .task-time:hover,
+.task-edit-times input[type="time"]:hover {
+  border-color: #a9b89a;
+  background: #20241f;
+}
+
+.add-task .task-time:focus,
+.task-edit-times input[type="time"]:focus {
+  outline: none;
+  border-color: #c8d6b8;
+  box-shadow: 0 0 0 2px rgba(200, 214, 184, 0.12);
+}
