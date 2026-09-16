@@ -10,6 +10,9 @@ import {
   calculateStreaks,
   calculateFocusTotal,
   calculateFocusStats,
+  calculateFocusDays,
+  calculateFocusStreaks,
+  calculateAverageFocusPerDay,
   formatDuration,
   formatSessionDuration
 } from '../utils/analytics'
@@ -18,7 +21,12 @@ import AnalyticsStats from '../components/analytics/AnalyticsStats'
 import CompletionChart from '../components/analytics/CompletionChart'
 import FocusChart from '../components/analytics/FocusChart'
 import FocusStats from '../components/analytics/FocusStats'
+import FocusAllocation from '../components/analytics/FocusAllocation'
+import HierarchyAllocation from '../components/analytics/HierarchyAllocation'
+import SmartAnalytics from '../components/analytics/SmartAnalytics'
 import PlanningChart from '../components/analytics/PlanningChart'
+import MonthlyProgress from '../components/analytics/MonthlyProgress'
+import GoalPacing from '../components/analytics/GoalPacing'
 
 function Analytics({ session, onBack }) {
   const today = getToday()
@@ -56,7 +64,9 @@ function Analytics({ session, onBack }) {
   const percentage =
     total === 0
       ? 0
-      : Math.round((completed / total) * 100)
+      : Math.round(
+          (completed / total) * 100
+        )
 
   const dailyData = buildDailyData(
     tasks,
@@ -75,16 +85,23 @@ function Analytics({ session, onBack }) {
           dailyData
             .filter(day => day.total > 0)
             .reduce(
-              (sum, day) => sum + day.completion,
+              (sum, day) =>
+                sum + day.completion,
               0
             ) / activeDays
         )
 
+  /*
+   * TASK COMPLETION STREAK
+   */
   const {
     currentStreak,
     bestStreak
   } = calculateStreaks(dailyData)
 
+  /*
+   * FOCUS ANALYTICS
+   */
   const focusSeconds =
     calculateFocusTotal(focusSessions)
 
@@ -95,34 +112,62 @@ function Analytics({ session, onBack }) {
     longestSeconds
   } = calculateFocusStats(focusSessions)
 
+  const focusDays =
+    calculateFocusDays(focusSessions)
+
+  const {
+    currentStreak: currentFocusStreak,
+    bestStreak: bestFocusStreak
+  } = calculateFocusStreaks(
+    focusSessions
+  )
+
+  const averageFocusPerDay =
+    calculateAverageFocusPerDay(
+      focusSessions
+    )
+
   const focusChartData = dailyData.map(day => {
-    const sessions = focusSessions.filter(session => {
-      const sessionDate =
-        new Date(session.start_time)
-          .toLocaleDateString('en-CA')
+    const sessions =
+      focusSessions.filter(session => {
+        const sessionDate =
+          new Date(
+            session.start_time
+          ).toLocaleDateString(
+            'en-CA'
+          )
 
-      return sessionDate === day.date
-    })
+        return (
+          sessionDate === day.date
+        )
+      })
 
-    const seconds = calculateFocusTotal(sessions)
+    const seconds =
+      calculateFocusTotal(sessions)
 
     return {
       label: day.label,
       date: day.date,
-      minutes: Math.round(seconds / 60)
+      minutes: Math.round(
+        seconds / 60
+      )
     }
   })
 
-  const planningChartData = dailyData.map(day => ({
-    label: day.label,
-    date: day.date,
-    total: day.total,
-    completed: day.completed
-  }))
+  const planningChartData =
+    dailyData.map(day => ({
+      label: day.label,
+      date: day.date,
+      total: day.total,
+      completed: day.completed
+    }))
 
   const numberOfDays =
     startDate <= endDate
-      ? daysBetween(startDate, endDate) + 1
+      ? daysBetween(
+          startDate,
+          endDate
+        ) + 1
       : 0
 
   return (
@@ -142,7 +187,9 @@ function Analytics({ session, onBack }) {
             ANALYTICS
           </p>
 
-          <h1>Your performance.</h1>
+          <h1>
+            Your performance.
+          </h1>
         </div>
 
         <div className="analytics-dates">
@@ -155,7 +202,9 @@ function Analytics({ session, onBack }) {
               value={startDate}
               max={endDate}
               onChange={e =>
-                setStartDate(e.target.value)
+                setStartDate(
+                  e.target.value
+                )
               }
             />
           </label>
@@ -169,7 +218,9 @@ function Analytics({ session, onBack }) {
               max={today}
               min={startDate}
               onChange={e =>
-                setEndDate(e.target.value)
+                setEndDate(
+                  e.target.value
+                )
               }
             />
           </label>
@@ -182,7 +233,9 @@ function Analytics({ session, onBack }) {
         percentage={percentage}
         completed={completed}
         total={total}
-        focusTime={formatDuration(focusSeconds)}
+        focusTime={formatDuration(
+          focusSeconds
+        )}
         activeDays={activeDays}
       />
 
@@ -201,23 +254,45 @@ function Analytics({ session, onBack }) {
         <div className="consistency-grid">
 
           <div>
-            <strong>{currentStreak}</strong>
-            <span>current streak</span>
+            <strong>
+              {currentFocusStreak}
+            </strong>
+
+            <span>
+              focus streak
+            </span>
           </div>
 
           <div>
-            <strong>{bestStreak}</strong>
-            <span>best streak</span>
+            <strong>
+              {bestFocusStreak}
+            </strong>
+
+            <span>
+              best focus streak
+            </span>
           </div>
 
           <div>
-            <strong>{activeDays}</strong>
-            <span>active days</span>
+            <strong>
+              {focusDays}
+            </strong>
+
+            <span>
+              focus days
+            </span>
           </div>
 
           <div>
-            <strong>{averageCompletion}%</strong>
-            <span>average completion</span>
+            <strong>
+              {formatDuration(
+                averageFocusPerDay
+              )}
+            </strong>
+
+            <span>
+              avg focus / day
+            </span>
           </div>
 
         </div>
@@ -234,15 +309,43 @@ function Analytics({ session, onBack }) {
       />
 
       <FocusStats
-        totalFocus={formatDuration(totalSeconds)}
-        averageSession={formatSessionDuration(averageSeconds)}
+        totalFocus={formatDuration(
+          totalSeconds
+        )}
+        averageSession={formatSessionDuration(
+          averageSeconds
+        )}
         sessionCount={sessionCount}
-        longestSession={formatSessionDuration(longestSeconds)}
+        longestSession={formatSessionDuration(
+          longestSeconds
+        )}
+      />
+
+      <FocusAllocation
+        tasks={tasks}
+        focusSessions={focusSessions}
+      />
+
+      <HierarchyAllocation
+        tasks={tasks}
+        focusSessions={focusSessions}
+      />
+
+      <SmartAnalytics
+        tasks={tasks}
+        focusSessions={focusSessions}
+        activeDays={activeDays}
+        currentFocusStreak={currentFocusStreak}
+        bestFocusStreak={bestFocusStreak}
       />
 
       <PlanningChart
         data={planningChartData}
       />
+
+      <MonthlyProgress userId={session.user.id} />
+
+      <GoalPacing userId={session.user.id} />
 
     </main>
   )

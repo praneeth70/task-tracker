@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Task from './Task'
 
 function TaskList({
@@ -6,8 +7,29 @@ function TaskList({
   onEdit,
   onDelete,
   onFocus,
+  onReorder,
+  onAreaAssigned,
   locked = false
 }) {
+  const [draggedTask, setDraggedTask] = useState(null)
+
+  function handleDragStart(task) {
+    if (locked) return
+    setDraggedTask(task)
+  }
+
+  function handleDrop(targetTask) {
+    if (!draggedTask) return
+    if (draggedTask.id === targetTask.id) return
+
+    onReorder(draggedTask, targetTask)
+    setDraggedTask(null)
+  }
+
+  function handleDragEnd() {
+    setDraggedTask(null)
+  }
+
   return (
     <div className="task-list">
       {tasks.map(task => (
@@ -18,6 +40,10 @@ function TaskList({
           onEdit={onEdit}
           onDelete={onDelete}
           onFocus={onFocus}
+          onDragStart={handleDragStart}
+          onDrop={handleDrop}
+          onDragEnd={handleDragEnd}
+          onAreaAssigned={onAreaAssigned}
           locked={locked}
         />
       ))}

@@ -1,19 +1,41 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 
-function AddTask({ userId, taskDate, onTaskAdded }) {
+function AddTask({
+  userId,
+  taskDate,
+  onTaskAdded
+}) {
   const [title, setTitle] = useState('')
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function createTask() {
-    if (!title.trim() || loading) return
+  function validateTask() {
+    if (!title.trim()) return false
 
-    if (startTime && endTime && endTime <= startTime) {
-      window.alert('Finish time must be after start time.')
-      return
+    if (
+      startTime &&
+      endTime &&
+      endTime <= startTime
+    ) {
+      window.alert(
+        'Finish time must be after start time.'
+      )
+      return false
     }
+
+    return true
+  }
+
+  function resetForm() {
+    setTitle('')
+    setStartTime('')
+    setEndTime('')
+  }
+
+  async function createTask() {
+    if (!validateTask() || loading) return
 
     setLoading(true)
 
@@ -28,44 +50,45 @@ function AddTask({ userId, taskDate, onTaskAdded }) {
       })
 
     if (error) {
-      console.error('ADD TASK FAILED:', error)
+      console.error(
+        'ADD TASK FAILED:',
+        error
+      )
       setLoading(false)
       return
     }
 
-    setTitle('')
-    setStartTime('')
-    setEndTime('')
+    resetForm()
     setLoading(false)
 
-    onTaskAdded()
+    await onTaskAdded()
   }
 
   async function createRecurringTask() {
-    if (!title.trim() || loading) return
-
-    if (startTime && endTime && endTime <= startTime) {
-      window.alert('Finish time must be after start time.')
-      return
-    }
+    if (!validateTask() || loading) return
 
     setLoading(true)
 
-    const date = new Date(`${taskDate}T00:00:00`)
+    const date = new Date(
+      `${taskDate}T00:00:00`
+    )
+
     const dayOfWeek = date.getDay()
 
-    const { data: recurringTask, error: recurringError } =
-      await supabase
-        .from('recurring_tasks')
-        .insert({
-          user_id: userId,
-          title: title.trim(),
-          days_of_week: [dayOfWeek],
-          start_time: startTime || null,
-          end_time: endTime || null
-        })
-        .select()
-        .single()
+    const {
+      data: recurringTask,
+      error: recurringError
+    } = await supabase
+      .from('recurring_tasks')
+      .insert({
+        user_id: userId,
+        title: title.trim(),
+        days_of_week: [dayOfWeek],
+        start_time: startTime || null,
+        end_time: endTime || null
+      })
+      .select()
+      .single()
 
     if (recurringError) {
       console.error(
@@ -76,16 +99,20 @@ function AddTask({ userId, taskDate, onTaskAdded }) {
       return
     }
 
-    const { error: taskError } = await supabase
-      .from('tasks')
-      .insert({
-        user_id: userId,
-        recurring_task_id: recurringTask.id,
-        title: title.trim(),
-        task_date: taskDate,
-        start_time: startTime || null,
-        end_time: endTime || null
-      })
+    const { error: taskError } =
+      await supabase
+        .from('tasks')
+        .insert({
+          user_id: userId,
+          recurring_task_id:
+            recurringTask.id,
+          title: title.trim(),
+          task_date: taskDate,
+          start_time:
+            startTime || null,
+          end_time:
+            endTime || null
+        })
 
     if (taskError) {
       console.error(
@@ -96,22 +123,28 @@ function AddTask({ userId, taskDate, onTaskAdded }) {
       await supabase
         .from('recurring_tasks')
         .delete()
-        .eq('id', recurringTask.id)
+        .eq(
+          'id',
+          recurringTask.id
+        )
 
       setLoading(false)
       return
     }
 
-    setTitle('')
-    setStartTime('')
-    setEndTime('')
+    resetForm()
     setLoading(false)
 
-    onTaskAdded()
+    await onTaskAdded()
   }
 
   function handleKeyDown(e) {
-    if (e.key !== 'Enter' || loading) return
+    if (
+      e.key !== 'Enter' ||
+      loading
+    ) {
+      return
+    }
 
     e.preventDefault()
 
@@ -130,9 +163,12 @@ function AddTask({ userId, taskDate, onTaskAdded }) {
         createTask()
       }}
     >
+
       <input
         value={title}
-        onChange={e => setTitle(e.target.value)}
+        onChange={e =>
+          setTitle(e.target.value)
+        }
         onKeyDown={handleKeyDown}
         placeholder="What needs to get done?"
         autoComplete="off"
@@ -143,28 +179,40 @@ function AddTask({ userId, taskDate, onTaskAdded }) {
         className="task-time"
         type="time"
         value={startTime}
-        onChange={e => setStartTime(e.target.value)}
+        onChange={e =>
+          setStartTime(e.target.value)
+        }
         disabled={loading}
         title="Start time"
       />
 
-      <span className="time-separator">→</span>
+      <span className="time-separator">
+        →
+      </span>
 
       <input
         className="task-time"
         type="time"
         value={endTime}
-        onChange={e => setEndTime(e.target.value)}
+        onChange={e =>
+          setEndTime(e.target.value)
+        }
         disabled={loading}
         title="Finish time"
       />
 
       <button
         type="submit"
-        disabled={loading || !title.trim()}
+        disabled={
+          loading ||
+          !title.trim()
+        }
       >
-        {loading ? '...' : 'Enter ↵'}
+        {loading
+          ? '...'
+          : 'Enter ↵'}
       </button>
+
     </form>
   )
 }

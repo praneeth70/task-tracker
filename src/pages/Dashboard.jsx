@@ -4,15 +4,22 @@ import Header from '../components/layout/Header'
 import TaskList from '../components/tasks/TaskList'
 import AddTask from '../components/tasks/AddTask'
 
-function Dashboard({ session, onAnalytics }) {
+function Dashboard({ session, onAnalytics, onAreas }) {
   const [selectedDate, setSelectedDate] = useState(getToday())
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [actionError, setActionError] = useState('')
 
   const [activeSession, setActiveSession] = useState(null)
   const [elapsed, setElapsed] = useState(0)
   const [focusedToday, setFocusedToday] = useState(0)
+  const [focusDays, setFocusDays] = useState(0)
   const [selectedFocusTask, setSelectedFocusTask] = useState('')
+  const [yesterdayStats, setYesterdayStats] = useState({ total: 0, completed: 0, carryover: 0, percentage: 0 })
+  const [yesterdayTasks, setYesterdayTasks] = useState([])
+  const [carryingOver, setCarryingOver] = useState(false)
+  const [carryoverTasks, setCarryoverTasks] = useState([])
 
   function getToday() {
     const date = new Date()
@@ -59,8 +66,14 @@ function Dashboard({ session, onAnalytics }) {
     ).getDay()
   }
 
+  function showActionError(message, error) {
+    console.error(message, error)
+    setActionError(message)
+  }
+
   async function loadTasks() {
     setLoading(true)
+    setErrorMessage('')
 
     const {
       data: existingTasks,
@@ -70,10 +83,12 @@ function Dashboard({ session, onAnalytics }) {
       .select('*')
       .eq('user_id', session.user.id)
       .eq('task_date', selectedDate)
-      .order('created_at')
+      .order('position', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true })
 
     if (error) {
       console.error('LOAD TASKS FAILED:', error)
+      setErrorMessage('Could not load your tasks. Please try again.')
       setLoading(false)
       return
     }
@@ -120,7 +135,11 @@ function Dashboard({ session, onAnalytics }) {
             title: recurringTask.title,
             task_date: selectedDate,
             start_time: recurringTask.start_time,
-            end_time: recurringTask.end_time
+            end_time: recurringTask.end_time,
+            goal_id: recurringTask.goal_id || null,
+            milestone_id: recurringTask.milestone_id || null,
+            area_id: recurringTask.area_id || null,
+            deadline: recurringTask.deadline || null
           }))
 
         if (missingTasks.length) {
@@ -148,7 +167,344 @@ function Dashboard({ session, onAnalytics }) {
     }
 
     setTasks(finalTasks)
+
+    const yesterday = changeDate(selectedDate, -1)
+    const { data: yesterdayTasks, error: yesterdayError } = await supabase
+      .from('tasks')
+      .select('id, completed')
+      .eq('user_id', session.user.id)
+      .eq('task_date', yesterday)
+
+    if (yesterdayError) {
+      console.error('YESTERDAY TASKS FAILED:', yesterdayError)
+      setYesterdayStats({ total: 0, completed: 0, carryover: 0, percentage: 0 })
+    } else {
+      const total = yesterdayTasks?.length || 0
+      const completed = (yesterdayTasks || []).filter(task => task.completed).length
+      const carryover = total - completed
+      const percentage = total === 0 ? 0 : Math.round((carryover / total) * 100)
+      setYesterdayStats({ total, completed, carryover, percentage })
+    }
+
     setLoading(false)
+  }
+
+  async function loadCarryoverTasks() {
+    const yesterday = changeDate(getToday(), -1)
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('task_date', yesterday)
+      .eq('completed', false)
+      .is('carryover_skipped_at', null)
+      .order('position', {
+        ascending: true,
+        nullsFirst: false
+      })
+      .order('created_at', {
+        ascending: true
+      })
+
+    if (error) {
+      console.error(
+        'LOAD CARRYOVER TASKS FAILED:',
+        error
+      )
+      return
+    }
+
+    setCarryoverTasks(data || [])
+  }
+
+  async function bringCarryoverToToday(task) {
+    setActionError('')
+    const today = getToday()
+
+    const { data: existing, error: existingError } = await supabase
+      .from('tasks')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .eq('task_date', today)
+      .eq('rescheduled_from_task_id', task.id)
+      .maybeSingle()
+
+    if (existingError) {
+      showActionError('Could not check the carryover task. Please try again.', existingError)
+      return
+    }
+
+    if (existing) {
+      setCarryoverTasks(prev =>
+        prev.filter(item => item.id !== task.id)
+      )
+      return
+    }
+
+    const { error } = await supabase
+      .from('tasks')
+      .insert({
+        user_id: session.user.id,
+        title: task.title,
+        task_date: today,
+        priority: task.priority,
+        category: task.category,
+        estimated_minutes: task.estimated_minutes,
+        start_time: task.start_time,
+        end_time: task.end_time,
+        deadline: task.deadline,
+        area_id: task.area_id || null,
+        goal_id: task.goal_id || null,
+        milestone_id: task.milestone_id || null,
+        rescheduled_from_task_id: task.id,
+        completed: false,
+        is_focus: false
+      })
+
+    if (error) {
+      showActionError('Could not bring this task to today. Please try again.', error)
+      return
+    }
+
+    setCarryoverTasks(prev =>
+      prev.filter(item => item.id !== task.id)
+    )
+
+    await loadTasks()
+  }
+
+  async function skipCarryover(taskId) {
+    setActionError('')
+    const { error } = await supabase
+      .from('tasks')
+      .update({
+        carryover_skipped_at: new Date().toISOString()
+      })
+      .eq('id', taskId)
+      .eq('user_id', session.user.id)
+
+    if (error) {
+      showActionError('Could not skip this task. Please try again.', error)
+      return
+    }
+
+    setCarryoverTasks(prev =>
+      prev.filter(task => task.id !== taskId)
+    )
+  }
+
+  async function rescheduleCarryover(task) {
+    setActionError('')
+    const date = window.prompt(
+      'Enter the new date (YYYY-MM-DD):',
+      getToday()
+    )
+
+    if (!date) return
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      window.alert('Please enter the date as YYYY-MM-DD.')
+      return
+    }
+
+    const { error } = await supabase
+      .from('tasks')
+      .insert({
+        user_id: session.user.id,
+        title: task.title,
+        task_date: date,
+        priority: task.priority,
+        category: task.category,
+        estimated_minutes: task.estimated_minutes,
+        start_time: task.start_time,
+        end_time: task.end_time,
+        deadline: task.deadline,
+        area_id: task.area_id || null,
+        goal_id: task.goal_id || null,
+        milestone_id: task.milestone_id || null,
+        rescheduled_from_task_id: task.id,
+        completed: false,
+        is_focus: false
+      })
+
+    if (error) {
+      showActionError('Could not reschedule this task. Please try again.', error)
+      return
+    }
+
+    setCarryoverTasks(prev =>
+      prev.filter(item => item.id !== task.id)
+    )
+
+    if (date === selectedDate) {
+      await loadTasks()
+    }
+  }
+
+  async function loadYesterdayStats() {
+    const yesterday = changeDate(getToday(), -1)
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('task_date', yesterday)
+      .order('position', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error('LOAD YESTERDAY TASKS FAILED:', error)
+      return
+    }
+
+    const rows = data || []
+    const unfinished = rows.filter(task => !task.completed)
+
+    setYesterdayTasks(unfinished)
+    setYesterdayStats({
+      total: rows.length,
+      completed: rows.length - unfinished.length,
+      carryover: unfinished.length,
+      percentage: rows.length === 0
+        ? 0
+        : Math.round((unfinished.length / rows.length) * 100)
+    })
+  }
+
+  async function carryOverTask(task) {
+    if (getToday() !== selectedDate || !task || carryingOver) return
+
+    setCarryingOver(true)
+
+    const { data: existing, error: existingError } = await supabase
+      .from('tasks')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .eq('task_date', getToday())
+      .eq('rescheduled_from_task_id', task.id)
+      .limit(1)
+
+    if (existingError) {
+      console.error('CHECK CARRYOVER FAILED:', existingError)
+      setCarryingOver(false)
+      return
+    }
+
+    if (existing?.length) {
+      window.alert("This task is already carried over to today.")
+      setCarryingOver(false)
+      return
+    }
+
+    const { error } = await supabase
+      .from('tasks')
+      .insert({
+        user_id: session.user.id,
+        rescheduled_from_task_id: task.id,
+        title: task.title,
+        task_date: getToday(),
+        priority: task.priority,
+        category: task.category || null,
+        estimated_minutes: task.estimated_minutes || null,
+        start_time: task.start_time || null,
+        end_time: task.end_time || null,
+        deadline: task.deadline || null,
+        area_id: task.area_id || null,
+        goal_id: task.goal_id || null,
+        milestone_id: task.milestone_id || null,
+        completed: false,
+        is_focus: false,
+        recurring_task_id: null
+      })
+
+    if (error) {
+      console.error('CARRYOVER FAILED:', error)
+      window.alert('Could not carry over this task.')
+      setCarryingOver(false)
+      return
+    }
+
+    setYesterdayTasks(prev => prev.filter(item => item.id !== task.id))
+    setYesterdayStats(prev => {
+      const carryover = Math.max(0, prev.carryover - 1)
+      return {
+        ...prev,
+        carryover,
+        percentage: prev.total === 0
+          ? 0
+          : Math.round((carryover / prev.total) * 100)
+      }
+    })
+
+    await loadTasks()
+    setCarryingOver(false)
+  }
+
+  async function carryOverYesterdayTasks() {
+    if (getToday() !== selectedDate || yesterdayTasks.length === 0 || carryingOver) return
+
+    setCarryingOver(true)
+
+    const { data: existing, error: existingError } = await supabase
+      .from('tasks')
+      .select('rescheduled_from_task_id')
+      .eq('user_id', session.user.id)
+      .eq('task_date', getToday())
+      .not('rescheduled_from_task_id', 'is', null)
+
+    if (existingError) {
+      console.error('CHECK CARRYOVER FAILED:', existingError)
+      setCarryingOver(false)
+      return
+    }
+
+    const existingIds = new Set(
+      (existing || []).map(task => task.rescheduled_from_task_id)
+    )
+
+    const missing = yesterdayTasks.filter(
+      task => !existingIds.has(task.id)
+    )
+
+    if (missing.length === 0) {
+      window.alert("Yesterday's unfinished tasks are already carried over.")
+      setCarryingOver(false)
+      return
+    }
+
+    const copies = missing.map(task => ({
+      user_id: session.user.id,
+      rescheduled_from_task_id: task.id,
+      title: task.title,
+      task_date: getToday(),
+      priority: task.priority,
+      category: task.category || null,
+      estimated_minutes: task.estimated_minutes || null,
+      start_time: task.start_time || null,
+      end_time: task.end_time || null,
+      deadline: task.deadline || null,
+      area_id: task.area_id || null,
+      goal_id: task.goal_id || null,
+      milestone_id: task.milestone_id || null,
+      completed: false,
+      is_focus: false,
+      recurring_task_id: null
+    }))
+
+    const { error } = await supabase
+      .from('tasks')
+      .insert(copies)
+
+    if (error) {
+      console.error('CARRYOVER FAILED:', error)
+      window.alert('Could not carry over the unfinished tasks.')
+      setCarryingOver(false)
+      return
+    }
+
+    await loadTasks()
+    setCarryingOver(false)
   }
 
   async function loadFocusData() {
@@ -181,52 +537,81 @@ function Dashboard({ session, onAnalytics }) {
         currentSession.start_time
       )
 
-      const today = getToday()
+      const MAX_SESSION_SECONDS = 2 * 60 * 60
 
-      const startDate =
-        `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`
+      const elapsedSeconds = Math.floor(
+        (Date.now() - start.getTime()) / 1000
+      )
 
-      if (startDate !== today) {
-        const midnight = new Date(start)
-
-        midnight.setHours(
-          24,
-          0,
-          0,
-          0
-        )
-
-        const duration = Math.max(
-          0,
-          Math.floor(
-            (
-              midnight.getTime() -
-              start.getTime()
-            ) / 1000
-          )
+      if (elapsedSeconds >= MAX_SESSION_SECONDS) {
+        const endTime = new Date(
+          start.getTime() + MAX_SESSION_SECONDS * 1000
         )
 
         const { error } = await supabase
           .from('focus_sessions')
           .update({
-            end_time:
-              midnight.toISOString(),
-            duration_seconds:
-              duration
+            end_time: endTime.toISOString(),
+            duration_seconds: MAX_SESSION_SECONDS
           })
-          .eq(
-            'id',
-            currentSession.id
-          )
+          .eq('id', currentSession.id)
 
         if (error) {
-          console.error(
-            'AUTO STOP FAILED:',
-            error
-          )
+          console.error('AUTO STOP FAILED:', error)
         }
 
         currentSession = null
+      }
+
+      // Existing midnight logic continues here
+      if (currentSession) {
+        const today = getToday()
+
+        const startDate =
+          `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`
+
+        if (startDate !== today) {
+          const midnight = new Date(start)
+
+          midnight.setHours(
+            24,
+            0,
+            0,
+            0
+          )
+
+          const duration = Math.max(
+            0,
+            Math.floor(
+              (
+                midnight.getTime() -
+                start.getTime()
+              ) / 1000
+            )
+          )
+
+          const { error } = await supabase
+            .from('focus_sessions')
+            .update({
+              end_time:
+                midnight.toISOString(),
+              duration_seconds:
+                duration
+            })
+            .eq(
+              'id',
+              currentSession.id
+            )
+
+          if (error) {
+            console.error(
+              'AUTO STOP FAILED:',
+              error
+            )
+          }
+
+          currentSession = null
+        }
       }
     }
 
@@ -257,24 +642,9 @@ function Dashboard({ session, onAnalytics }) {
       error: sessionsError
     } = await supabase
       .from('focus_sessions')
-      .select('duration_seconds')
-      .eq(
-        'user_id',
-        session.user.id
-      )
-      .gte(
-        'start_time',
-        `${today}T00:00:00`
-      )
-      .lt(
-        'start_time',
-        `${changeDate(today, 1)}T00:00:00`
-      )
-      .not(
-        'duration_seconds',
-        'is',
-        null
-      )
+      .select('start_time, duration_seconds')
+      .eq('user_id', session.user.id)
+      .not('duration_seconds', 'is', null)
 
     if (sessionsError) {
       console.error(
@@ -284,16 +654,81 @@ function Dashboard({ session, onAnalytics }) {
       return
     }
 
-    const total = (
-      sessions || []
-    ).reduce(
-      (sum, item) =>
-        sum +
-        (item.duration_seconds || 0),
-      0
-    )
+    const total = (sessions || [])
+      .filter(session => {
+        const sessionDate =
+          new Date(
+            session.start_time
+          )
+
+        const year =
+          sessionDate.getFullYear()
+
+        const month = String(
+          sessionDate.getMonth() + 1
+        ).padStart(2, '0')
+
+        const day = String(
+          sessionDate.getDate()
+        ).padStart(2, '0')
+
+        return (
+          `${year}-${month}-${day}` ===
+          today
+        )
+      })
+      .reduce(
+        (sum, item) =>
+          sum +
+          (item.duration_seconds || 0),
+        0
+      )
 
     setFocusedToday(total)
+
+    /*
+     * Count unique calendar days
+     * on which actual focus time
+     * was recorded.
+     */
+    const focusedDates = new Set()
+
+    ;(sessions || []).forEach(session => {
+      if (
+        !session.duration_seconds ||
+        session.duration_seconds <= 0
+      ) {
+        return
+      }
+
+      const date =
+        new Date(session.start_time)
+
+      const year =
+        date.getFullYear()
+
+      const month = String(
+        date.getMonth() + 1
+      ).padStart(2, '0')
+
+      const day = String(
+        date.getDate()
+      ).padStart(2, '0')
+
+      focusedDates.add(
+        `${year}-${month}-${day}`
+      )
+    })
+
+    /*
+     * If a session is currently running,
+     * today counts as a focus day too.
+     */
+    if (currentSession) {
+      focusedDates.add(today)
+    }
+
+    setFocusDays(focusedDates.size)
   }
 
   useEffect(() => {
@@ -302,25 +737,39 @@ function Dashboard({ session, onAnalytics }) {
 
   useEffect(() => {
     loadFocusData()
+    loadYesterdayStats()
   }, [])
+
+  useEffect(() => {
+    if (selectedDate === getToday()) {
+      loadCarryoverTasks()
+    } else {
+      setCarryoverTasks([])
+    }
+  }, [selectedDate])
 
   useEffect(() => {
     if (!activeSession) return
 
+    const MAX_SESSION_SECONDS = 2 * 60 * 60
+
     const timer = setInterval(() => {
-      setElapsed(
-        Math.max(
-          0,
-          Math.floor(
-            (
-              Date.now() -
-              new Date(
-                activeSession.start_time
-              ).getTime()
-            ) / 1000
-          )
+      const elapsedSeconds = Math.max(
+        0,
+        Math.floor(
+          (
+            Date.now() -
+            new Date(activeSession.start_time).getTime()
+          ) / 1000
         )
       )
+
+      if (elapsedSeconds >= MAX_SESSION_SECONDS) {
+        stopFocus()
+        return
+      }
+
+      setElapsed(elapsedSeconds)
     }, 1000)
 
     return () => clearInterval(timer)
@@ -345,6 +794,7 @@ function Dashboard({ session, onAnalytics }) {
   }
 
   async function startFocus() {
+    setActionError('')
     if (activeSession) return
 
     const {
@@ -363,10 +813,13 @@ function Dashboard({ session, onAnalytics }) {
       .single()
 
     if (error) {
-      console.error(
-        'START FOCUS FAILED:',
-        error
-      )
+      if (error.code === '23505') {
+        await loadFocusData()
+        setActionError('A focus session is already running in another tab or window.')
+      } else {
+        showActionError('Could not start the focus session. Please try again.', error)
+      }
+
       return
     }
 
@@ -375,6 +828,7 @@ function Dashboard({ session, onAnalytics }) {
   }
 
   async function stopFocus() {
+    setActionError('')
     if (!activeSession) return
 
     const endTime = new Date()
@@ -407,10 +861,7 @@ function Dashboard({ session, onAnalytics }) {
       )
 
     if (error) {
-      console.error(
-        'STOP FOCUS FAILED:',
-        error
-      )
+      showActionError('Could not stop the focus session. Please try again.', error)
       return
     }
 
@@ -423,6 +874,7 @@ function Dashboard({ session, onAnalytics }) {
   }
 
   async function toggleTask(task) {
+    setActionError('')
     const { error } = await supabase
       .from('tasks')
       .update({
@@ -435,10 +887,7 @@ function Dashboard({ session, onAnalytics }) {
       .eq('id', task.id)
 
     if (error) {
-      console.error(
-        'UPDATE FAILED:',
-        error
-      )
+      showActionError('Could not update the task. Please try again.', error)
       return
     }
 
@@ -449,8 +898,10 @@ function Dashboard({ session, onAnalytics }) {
     task,
     newTitle,
     startTime,
-    endTime
+    endTime,
+    deadline
   ) {
+    setActionError('')
     if (
       startTime &&
       endTime &&
@@ -470,15 +921,13 @@ function Dashboard({ session, onAnalytics }) {
           start_time:
             startTime || null,
           end_time:
-            endTime || null
+            endTime || null,
+          deadline: deadline || null
         })
         .eq('id', task.id)
 
       if (error) {
-        console.error(
-          'EDIT FAILED:',
-          error
-        )
+        showActionError('Could not edit the task. Please try again.', error)
         return
       }
 
@@ -502,15 +951,13 @@ function Dashboard({ session, onAnalytics }) {
           start_time:
             startTime || null,
           end_time:
-            endTime || null
+            endTime || null,
+          deadline: deadline || null
         })
         .eq('id', task.id)
 
       if (error) {
-        console.error(
-          'EDIT OCCURRENCE FAILED:',
-          error
-        )
+        showActionError('Could not edit this occurrence. Please try again.', error)
         return
       }
 
@@ -531,10 +978,7 @@ function Dashboard({ session, onAnalytics }) {
       .single()
 
     if (recurringFetchError) {
-      console.error(
-        'LOAD RECURRING TASK FAILED:',
-        recurringFetchError
-      )
+      showActionError('Could not load the recurring task. Please try again.', recurringFetchError)
       return
     }
 
@@ -546,7 +990,8 @@ function Dashboard({ session, onAnalytics }) {
           start_time:
             startTime || null,
           end_time:
-            endTime || null
+            endTime || null,
+          deadline: deadline || null
         })
         .eq(
           'id',
@@ -554,10 +999,7 @@ function Dashboard({ session, onAnalytics }) {
         )
 
     if (ruleError) {
-      console.error(
-        'UPDATE RECURRING RULE FAILED:',
-        ruleError
-      )
+      showActionError('Could not update the recurring rule. Please try again.', ruleError)
       return
     }
 
@@ -569,7 +1011,8 @@ function Dashboard({ session, onAnalytics }) {
           start_time:
             startTime || null,
           end_time:
-            endTime || null
+            endTime || null,
+          deadline: deadline || null
         })
         .eq(
           'recurring_task_id',
@@ -585,10 +1028,7 @@ function Dashboard({ session, onAnalytics }) {
         )
 
     if (futureError) {
-      console.error(
-        'UPDATE FUTURE OCCURRENCES FAILED:',
-        futureError
-      )
+      showActionError('Could not update future occurrences. Please try again.', futureError)
       return
     }
 
@@ -601,6 +1041,7 @@ function Dashboard({ session, onAnalytics }) {
   }
 
   async function deleteTask(task) {
+    setActionError('')
     if (task.recurring_task_id) {
       const confirmed =
         window.confirm(
@@ -622,10 +1063,7 @@ function Dashboard({ session, onAnalytics }) {
         )
 
       if (recurringError) {
-        console.error(
-          'STOP RECURRING FAILED:',
-          recurringError
-        )
+        showActionError('Could not stop the recurring task. Please try again.', recurringError)
         return
       }
 
@@ -644,10 +1082,7 @@ function Dashboard({ session, onAnalytics }) {
         )
 
       if (deleteFutureError) {
-        console.error(
-          'DELETE FUTURE OCCURRENCES FAILED:',
-          deleteFutureError
-        )
+        showActionError('Could not delete future occurrences. Please try again.', deleteFutureError)
         return
       }
 
@@ -659,10 +1094,7 @@ function Dashboard({ session, onAnalytics }) {
         .eq('id', task.id)
 
       if (deleteError) {
-        console.error(
-          'DELETE FAILED:',
-          deleteError
-        )
+        showActionError('Could not delete the task. Please try again.', deleteError)
         return
       }
 
@@ -694,6 +1126,7 @@ function Dashboard({ session, onAnalytics }) {
   }
 
   async function toggleFocus(task) {
+    setActionError('')
     if (task.is_focus) {
       const { error } = await supabase
         .from('tasks')
@@ -733,14 +1166,63 @@ function Dashboard({ session, onAnalytics }) {
       .eq('id', task.id)
 
     if (error) {
-      console.error(
-        'FOCUS UPDATE FAILED:',
-        error
-      )
+      showActionError('Could not update focus status. Please try again.', error)
       return
     }
 
     await loadTasks()
+  }
+
+  async function reorderTasks(draggedTask, targetTask) {
+    setActionError('')
+    if (draggedTask.id === targetTask.id) return
+
+    // Keep Focus tasks and normal tasks in their existing groups
+    if (draggedTask.is_focus !== targetTask.is_focus) return
+
+    // Use the exact order shown on screen
+    const displayedTasks = [
+      ...tasks.filter(task => task.is_focus),
+      ...tasks.filter(task => !task.is_focus)
+    ]
+
+    const draggedIndex = displayedTasks.findIndex(
+      task => task.id === draggedTask.id
+    )
+
+    const targetIndex = displayedTasks.findIndex(
+      task => task.id === targetTask.id
+    )
+
+    if (draggedIndex === -1 || targetIndex === -1) return
+
+    const [movedTask] = displayedTasks.splice(draggedIndex, 1)
+
+    displayedTasks.splice(targetIndex, 0, movedTask)
+
+    const updatedTasks = displayedTasks.map((task, index) => ({
+      ...task,
+      position: index
+    }))
+
+    // Update UI immediately
+    setTasks(updatedTasks)
+
+    // Save positions
+    const results = await Promise.all(
+      updatedTasks.map(task =>
+        supabase
+          .from('tasks')
+          .update({ position: task.position })
+          .eq('id', task.id)
+      )
+    )
+
+    const failed = results.find(result => result.error)
+
+    if (failed) {
+      showActionError('Could not save task order. Please try again.', failed.error)
+    }
   }
 
   async function logout() {
@@ -779,6 +1261,17 @@ function Dashboard({ session, onAnalytics }) {
     )
   }
 
+  if (errorMessage) {
+    return (
+      <div className="loading">
+        <p>{errorMessage}</p>
+        <button onClick={loadTasks}>
+          Try again
+        </button>
+      </div>
+    )
+  }
+
   const isEditable =
     selectedDate >= getToday()
 
@@ -809,12 +1302,21 @@ function Dashboard({ session, onAnalytics }) {
 
       <main className="dashboard">
 
-        <button
-          className="analytics-button"
-          onClick={onAnalytics}
-        >
-          Analytics
-        </button>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '40px' }}>
+          <button
+            className="analytics-button"
+            onClick={onAnalytics}
+          >
+            Analytics
+          </button>
+
+          <button
+            className="analytics-button"
+            onClick={onAreas}
+          >
+            Areas
+          </button>
+        </div>
 
         <div className="date-navigation">
 
@@ -839,6 +1341,88 @@ function Dashboard({ session, onAnalytics }) {
           </button>
 
         </div>
+
+        {actionError && (
+          <div
+            role="alert"
+            style={{
+              margin: '0 auto 24px',
+              maxWidth: '900px',
+              padding: '12px 16px',
+              border: '1px solid #4a4a4a',
+              textAlign: 'center'
+            }}
+          >
+            {actionError}
+            <button
+              type="button"
+              onClick={() => setActionError('')}
+              style={{ marginLeft: '12px' }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {selectedDate === getToday() &&
+          carryoverTasks.length > 0 && (
+            <section className="carryover-section">
+              <p className="eyebrow">
+                CARRYOVER
+              </p>
+
+              <h2>
+                Yesterday's unfinished work.
+              </h2>
+
+              <p>
+                You have {carryoverTasks.length} unfinished{' '}
+                {carryoverTasks.length === 1 ? 'task' : 'tasks'} from yesterday.
+              </p>
+
+              <div className="carryover-list">
+                {carryoverTasks.map(task => (
+                  <div
+                    key={task.id}
+                    className="carryover-item"
+                  >
+                    <strong>
+                      {task.title}
+                    </strong>
+
+                    <div className="carryover-actions">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          bringCarryoverToToday(task)
+                        }
+                      >
+                        Bring to today
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          skipCarryover(task.id)
+                        }
+                      >
+                        Skip
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          rescheduleCarryover(task)
+                        }
+                      >
+                        Reschedule
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
         <section className="today-section">
 
@@ -873,20 +1457,22 @@ function Dashboard({ session, onAnalytics }) {
           </div>
 
           <TaskList
-            tasks={[
-              ...tasks.filter(
-                task => task.is_focus
-              ),
-              ...tasks.filter(
-                task => !task.is_focus
-              )
-            ]}
-            onToggle={toggleTask}
-            onEdit={editTask}
-            onDelete={deleteTask}
-            onFocus={toggleFocus}
-            locked={!isEditable}
-          />
+          tasks={[
+            ...tasks.filter(
+              task => task.is_focus
+            ),
+            ...tasks.filter(
+              task => !task.is_focus
+            )
+          ]}
+          onToggle={toggleTask}
+          onEdit={editTask}
+          onDelete={deleteTask}
+          onFocus={toggleFocus}
+          onReorder={reorderTasks}
+          onAreaAssigned={loadTasks}
+          locked={!isEditable}
+        />
 
         </section>
 
@@ -959,6 +1545,13 @@ function Dashboard({ session, onAnalytics }) {
               {formatDuration(
                 focusedToday
               )}
+            </strong>
+          </p>
+
+          <p className="focused-today">
+            Focus days:{' '}
+            <strong>
+              {focusDays}
             </strong>
           </p>
 

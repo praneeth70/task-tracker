@@ -3,11 +3,14 @@ import { supabase } from './lib/supabase'
 import AuthPage from './pages/AuthPage'
 import Dashboard from './pages/Dashboard'
 import Analytics from './pages/Analytics'
+import Areas from './pages/Areas'
+import AreaDetail from './pages/AreaDetail'
 
 function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState('dashboard')
+  const [selectedArea, setSelectedArea] = useState(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -41,10 +44,34 @@ function App() {
     )
   }
 
+  if (page === 'areas') {
+    return (
+      <Areas
+        session={session}
+        onBack={() => setPage('dashboard')}
+        onOpenArea={(area) => {
+          setSelectedArea(area)
+          setPage('area')
+        }}
+      />
+    )
+  }
+
+  if (page === 'area') {
+    return (
+      <AreaDetail
+        session={session}
+        area={selectedArea}
+        onBack={() => setPage('areas')}
+      />
+    )
+  }
+
   return (
     <Dashboard
       session={session}
       onAnalytics={() => setPage('analytics')}
+      onAreas={() => setPage('areas')}
     />
   )
 }

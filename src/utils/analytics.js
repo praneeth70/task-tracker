@@ -67,6 +67,12 @@ export function buildDailyData(tasks, startDate, endDate) {
   return data
 }
 
+/*
+ * TASK COMPLETION STREAKS
+ *
+ * A streak means consecutive days where
+ * every planned task was completed.
+ */
 export function calculateStreaks(dailyData) {
   let bestStreak = 0
   let runningStreak = 0
@@ -78,7 +84,10 @@ export function calculateStreaks(dailyData) {
 
     if (perfect) {
       runningStreak++
-      bestStreak = Math.max(bestStreak, runningStreak)
+      bestStreak = Math.max(
+        bestStreak,
+        runningStreak
+      )
     } else {
       runningStreak = 0
     }
@@ -105,6 +114,9 @@ export function calculateStreaks(dailyData) {
   }
 }
 
+/*
+ * TOTAL FOCUS TIME
+ */
 export function calculateFocusTotal(sessions) {
   return sessions.reduce(
     (total, session) =>
@@ -113,9 +125,18 @@ export function calculateFocusTotal(sessions) {
   )
 }
 
+/*
+ * FOCUS SESSION STATISTICS
+ */
 export function calculateFocusStats(sessions) {
-  const durations = sessions.map(
-    session => session.duration_seconds || 0
+  const validSessions = sessions.filter(
+    session =>
+      session.duration_seconds &&
+      session.duration_seconds > 0
+  )
+
+  const durations = validSessions.map(
+    session => session.duration_seconds
   )
 
   const totalSeconds = durations.reduce(
@@ -126,7 +147,9 @@ export function calculateFocusStats(sessions) {
   const averageSeconds =
     durations.length === 0
       ? 0
-      : Math.round(totalSeconds / durations.length)
+      : Math.round(
+          totalSeconds / durations.length
+        )
 
   const longestSeconds =
     durations.length === 0
@@ -136,11 +159,327 @@ export function calculateFocusStats(sessions) {
   return {
     totalSeconds,
     averageSeconds,
-    sessionCount: sessions.length,
+    sessionCount: validSessions.length,
     longestSeconds
   }
 }
 
+/*
+ * UNIQUE FOCUS DAYS
+ *
+ * A focus day is a calendar day on which
+ * at least one completed focus session exists.
+ */
+export function calculateFocusDays(sessions) {
+  const focusedDates = new Set()
+
+  for (const session of sessions) {
+    if (
+      !session.duration_seconds ||
+      session.duration_seconds <= 0 ||
+      !session.start_time
+    ) {
+      continue
+    }
+
+    const date = new Date(session.start_time)
+
+    const year = date.getFullYear()
+    const month = String(
+      date.getMonth() + 1
+    ).padStart(2, '0')
+    const day = String(
+      date.getDate()
+    ).padStart(2, '0')
+
+    focusedDates.add(
+      `${year}-${month}-${day}`
+    )
+  }
+
+  return focusedDates.size
+}
+
+/*
+ * RETURNS ALL CALENDAR DATES
+ * ON WHICH FOCUS WAS RECORDED.
+ *
+ * Useful for streaks, calendars and
+ * future heatmaps.
+ */
+export function getFocusDates(sessions) {
+  const focusedDates = new Set()
+
+  for (const session of sessions) {
+    if (
+      !session.duration_seconds ||
+      session.duration_seconds <= 0 ||
+      !session.start_time
+    ) {
+      continue
+    }
+
+    const date = new Date(session.start_time)
+
+    const year = date.getFullYear()
+    const month = String(
+      date.getMonth() + 1
+    ).padStart(2, '0')
+    const day = String(
+      date.getDate()
+    ).padStart(2, '0')
+
+    focusedDates.add(
+      `${year}-${month}-${day}`
+    )
+  }
+
+  return focusedDates
+}
+
+/*
+ * FOCUS STREAKS
+ *
+ * Focus streak is based on actually recording
+ * focus time on consecutive calendar days.
+ */
+export function calculateFocusStreaks(sessions) {
+  const dates = Array.from(
+    getFocusDates(sessions)
+  ).sort()
+
+  if (dates.length === 0) {
+    return {
+      currentStreak: 0,
+      bestStreak: 0
+    }
+  }
+
+  let bestStreak = 1
+  let runningStreak = 1
+
+  for (let i = 1; i < dates.length; i++) {
+    const previous = dates[i - 1]
+    const current = dates[i]
+
+    if (
+      daysBetween(previous, current) === 1
+    ) {
+      runningStreak++
+
+      bestStreak = Math.max(
+        bestStreak,
+        runningStreak
+      )
+    } else {
+      runningStreak = 1
+    }
+  }
+
+  /*
+   * Only count a streak as "current" if the
+   * latest focus day is today or yesterday.
+   *
+   * This prevents an old streak from being
+   * incorrectly displayed as current.
+   */
+  const today = getToday()
+  const latestDate = dates[dates.length - 1]
+
+  const latestIsCurrent =
+    latestDate === today ||
+    latestDate === addDays(today, -1)
+
+  let currentStreak = 0
+
+  if (latestIsCurrent) {
+    currentStreak = 1
+
+    for (
+      let i = dates.length - 1;
+      i > 0;
+      i--
+    ) {
+      if (
+        daysBetween(
+          dates[i - 1],
+          dates[i]
+        ) === 1
+      ) {
+        currentStreak++
+      } else {
+        break
+      }
+    }
+  }
+
+  return {
+    currentStreak,
+    bestStreak
+  }
+}
+
+/*
+ * AVERAGE FOCUS TIME PER FOCUS DAY
+ *
+ * This is more meaningful than average session
+ * duration for measuring actual consistency.
+ */
+export function calculateAverageFocusPerDay(
+  sessions
+) {
+  const focusDays = calculateFocusDays(
+    sessions
+  )
+
+  if (focusDays === 0) {
+    return 0
+  }
+
+  const totalSeconds =
+    calculateFocusTotal(sessions)
+
+  return Math.round(
+    totalSeconds / focusDays
+  )
+}
+
+/*
+ * FOCUS TIME BY DAY
+ *
+ * Produces:
+ *
+ * [
+ *   {
+ *     date: '2026-09-10',
+ *     seconds: 5400
+ *   }
+ * ]
+ *
+ * Useful for charts and heatmaps.
+ */
+export function buildDailyFocusData(
+  sessions,
+  startDate,
+  endDate
+) {
+  const numberOfDays =
+    startDate <= endDate
+      ? daysBetween(startDate, endDate) + 1
+      : 0
+
+  const data = []
+
+  for (let i = 0; i < numberOfDays; i++) {
+    const date = addDays(startDate, i)
+
+    const seconds = sessions
+      .filter(session => {
+        if (
+          !session.start_time ||
+          !session.duration_seconds
+        ) {
+          return false
+        }
+
+        const sessionDate =
+          new Date(session.start_time)
+
+        const year =
+          sessionDate.getFullYear()
+
+        const month = String(
+          sessionDate.getMonth() + 1
+        ).padStart(2, '0')
+
+        const day = String(
+          sessionDate.getDate()
+        ).padStart(2, '0')
+
+        return (
+          `${year}-${month}-${day}` ===
+          date
+        )
+      })
+      .reduce(
+        (sum, session) =>
+          sum +
+          (session.duration_seconds || 0),
+        0
+      )
+
+    data.push({
+      date,
+      label: date.slice(5),
+      seconds,
+      focused: seconds > 0
+    })
+  }
+
+  return data
+}
+
+/*
+ * FOCUS TIME BY MONTH
+ *
+ * Keeps monthly analysis separate from
+ * daily execution analytics.
+ */
+export function buildMonthlyFocusData(
+  sessions
+) {
+  const months = {}
+
+  for (const session of sessions) {
+    if (
+      !session.start_time ||
+      !session.duration_seconds ||
+      session.duration_seconds <= 0
+    ) {
+      continue
+    }
+
+    const date = new Date(session.start_time)
+
+    const year = date.getFullYear()
+    const month = String(
+      date.getMonth() + 1
+    ).padStart(2, '0')
+
+    const key = `${year}-${month}`
+
+    if (!months[key]) {
+      months[key] = {
+        month: key,
+        seconds: 0,
+        focusDays: new Set()
+      }
+    }
+
+    months[key].seconds +=
+      session.duration_seconds
+
+    months[key].focusDays.add(
+      `${year}-${month}-${String(
+        date.getDate()
+      ).padStart(2, '0')}`
+    )
+  }
+
+  return Object.values(months)
+    .sort((a, b) =>
+      a.month.localeCompare(b.month)
+    )
+    .map(month => ({
+      month: month.month,
+      seconds: month.seconds,
+      focusDays: month.focusDays.size
+    }))
+}
+
+/*
+ * FORMATTING
+ */
 export function formatSessionDuration(seconds) {
   const minutes = Math.floor(seconds / 60)
 
@@ -162,11 +501,67 @@ export function formatSessionDuration(seconds) {
 
 export function formatDuration(seconds) {
   const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
+  const minutes = Math.floor(
+    (seconds % 3600) / 60
+  )
 
   if (hours > 0) {
     return `${hours}h ${minutes}m`
   }
 
   return `${minutes}m`
+}
+
+/*
+ * FOCUS TIME BY TASK
+ *
+ * Connects focus_sessions.task_id
+ * to tasks.id and calculates how much
+ * actual focus time was spent on each task.
+ */
+export function calculateFocusByTask(
+  sessions,
+  tasks
+) {
+  const taskMap = new Map()
+
+  for (const task of tasks) {
+    taskMap.set(task.id, task.title)
+  }
+
+  const allocation = {}
+
+  for (const session of sessions) {
+    if (
+      !session.task_id ||
+      !session.duration_seconds ||
+      session.duration_seconds <= 0
+    ) {
+      continue
+    }
+
+    const title =
+      taskMap.get(session.task_id)
+
+    if (!title) {
+      continue
+    }
+
+    if (!allocation[session.task_id]) {
+      allocation[session.task_id] = {
+        taskId: session.task_id,
+        title,
+        seconds: 0
+      }
+    }
+
+    allocation[session.task_id].seconds +=
+      session.duration_seconds
+  }
+
+  return Object.values(allocation)
+    .sort(
+      (a, b) =>
+        b.seconds - a.seconds
+    )
 }
