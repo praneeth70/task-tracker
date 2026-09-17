@@ -109,6 +109,7 @@ function Dashboard({ session, onAnalytics, onAreas }) {
         .eq('user_id', session.user.id)
         .eq('active', true)
         .contains('days_of_week', [dayOfWeek])
+        .lte('start_date', selectedDate)
 
       if (recurringError) {
         console.error(

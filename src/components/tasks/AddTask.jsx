@@ -84,6 +84,7 @@ function AddTask({
         user_id: userId,
         title: title.trim(),
         days_of_week: [dayOfWeek],
+        start_date: taskDate,
         start_time: startTime || null,
         end_time: endTime || null
       })
@@ -163,7 +164,6 @@ function AddTask({
         createTask()
       }}
     >
-
       <input
         value={title}
         onChange={e =>
@@ -212,7 +212,6 @@ function AddTask({
           ? '...'
           : 'Enter ↵'}
       </button>
-
     </form>
   )
 }
