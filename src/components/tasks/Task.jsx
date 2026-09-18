@@ -448,24 +448,41 @@ function Task({
 
         </div>
       ) : (
-        <span
-          className={
-            task.completed
-              ? 'completed'
-              : ''
-          }
-        >
-          {task.title}
-          <small
-            style={{
-              marginLeft: '8px',
-              color: '#8d928a',
-              fontSize: '12px'
-            }}
+        <div className="task-main-content">
+          <span
+            className={
+              task.completed
+                ? 'completed'
+                : ''
+            }
           >
-            W{task.weight || 1}
-          </small>
-        </span>
+            {task.title}
+          </span>
+
+          {(task.start_time || task.end_time) && (
+            <span className="task-time-display">
+              {task.start_time
+                ? new Date(
+                    `1970-01-01T${task.start_time}`
+                  ).toLocaleTimeString([], {
+                    hour: 'numeric',
+                    minute: '2-digit'
+                  })
+                : '--'}
+
+              {' → '}
+
+              {task.end_time
+                ? new Date(
+                    `1970-01-01T${task.end_time}`
+                  ).toLocaleTimeString([], {
+                    hour: 'numeric',
+                    minute: '2-digit'
+                  })
+                : '--'}
+            </span>
+          )}
+        </div>
       )}
 
       {/* ACTIONS */}
