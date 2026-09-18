@@ -450,6 +450,29 @@ function Task({
       ) : (
         <div className="task-main-content">
           <span
+            className="task-weight-display"
+            title={
+              task.weight === 4
+                ? 'W4 · Project'
+                : task.weight === 3
+                  ? 'W3 · Study'
+                  : task.weight === 2
+                    ? 'W2 · Work / Gym'
+                    : 'W1 · Normal'
+            }
+            style={{
+              flexShrink: 0,
+              minWidth: '28px',
+              color: '#a9b89a',
+              fontSize: '11px',
+              fontWeight: 600,
+              letterSpacing: '0.04em'
+            }}
+          >
+            W{task.weight || 1}
+          </span>
+
+          <span
             className={
               task.completed
                 ? 'completed'
