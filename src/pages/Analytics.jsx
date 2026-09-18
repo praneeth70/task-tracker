@@ -61,11 +61,25 @@ function Analytics({ session, onBack }) {
     task => task.completed
   ).length
 
+  const totalWeight = tasks.reduce(
+    (sum, task) =>
+      sum + (Number(task.weight) || 1),
+    0
+  )
+
+  const completedWeight = tasks
+    .filter(task => task.completed)
+    .reduce(
+      (sum, task) =>
+        sum + (Number(task.weight) || 1),
+      0
+    )
+
   const percentage =
-    total === 0
+    totalWeight === 0
       ? 0
       : Math.round(
-          (completed / total) * 100
+          (completedWeight / totalWeight) * 100
         )
 
   const dailyData = buildDailyData(

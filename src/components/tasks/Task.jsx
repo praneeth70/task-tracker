@@ -27,8 +27,8 @@ function Task({
     task.end_time || ''
   )
 
-  const [deadline, setDeadline] = useState(
-    task.deadline || ''
+  const [weight, setWeight] = useState(
+    task.weight || 1
   )
 
   const [showAreas, setShowAreas] =
@@ -91,6 +91,7 @@ function Task({
     const { data, error } = await supabase
       .from('goals')
       .select('*')
+      .eq('user_id', task.user_id)
       .eq('area_id', areaId)
       .order('title')
 
@@ -99,7 +100,6 @@ function Task({
         'LOAD GOALS FAILED:',
         error
       )
-      setGoals([])
       setLoadingGoals(false)
       return
     }
@@ -246,9 +246,7 @@ function Task({
       task.end_time || ''
     )
 
-    setDeadline(
-      task.deadline || ''
-    )
+    setWeight(task.weight || 1)
 
     setEditing(true)
   }
@@ -273,12 +271,24 @@ function Task({
       return
     }
 
+    const numericWeight = Number(weight)
+
+    if (
+      !Number.isInteger(numericWeight) ||
+      numericWeight < 1 ||
+      numericWeight > 4
+    ) {
+      window.alert('Weight must be between 1 and 4.')
+      return
+    }
+
     await onEdit(
       task,
       newTitle,
       startTime,
       endTime,
-      deadline
+      undefined,
+      numericWeight
     )
 
     setEditing(false)
@@ -300,9 +310,7 @@ function Task({
         task.end_time || ''
       )
 
-      setDeadline(
-        task.deadline || ''
-      )
+      setWeight(task.weight || 1)
 
       setEditing(false)
     }
@@ -409,15 +417,18 @@ function Task({
             }
           />
 
-          <input
-            type="date"
-            value={deadline}
+          <select
+            value={weight}
             onChange={e =>
-              setDeadline(
-                e.target.value
-              )
+              setWeight(Number(e.target.value))
             }
-          />
+            title="Task weight"
+          >
+            <option value={1}>1 · Normal</option>
+            <option value={2}>2 · Work / Gym</option>
+            <option value={3}>3 · Study</option>
+            <option value={4}>4 · Project</option>
+          </select>
 
           <button
             type="button"
@@ -437,30 +448,24 @@ function Task({
 
         </div>
       ) : (
-        <div style={{ flex: 1 }}>
-          <span
-            className={
-              task.completed
-                ? 'completed'
-                : ''
-            }
+        <span
+          className={
+            task.completed
+              ? 'completed'
+              : ''
+          }
+        >
+          {task.title}
+          <small
+            style={{
+              marginLeft: '8px',
+              color: '#8d928a',
+              fontSize: '12px'
+            }}
           >
-            {task.title}
-          </span>
-
-          {task.start_time && (
-            <div
-              style={{
-                fontSize: '13px',
-                color: '#8b9087',
-                marginTop: '5px'
-              }}
-            >
-              {task.start_time.slice(0, 5)}
-              {task.end_time && ` → ${task.end_time.slice(0, 5)}`}
-            </div>
-          )}
-        </div>
+            W{task.weight || 1}
+          </small>
+        </span>
       )}
 
       {/* ACTIONS */}

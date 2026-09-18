@@ -137,6 +137,7 @@ function Dashboard({ session, onAnalytics, onAreas }) {
             task_date: selectedDate,
             start_time: recurringTask.start_time,
             end_time: recurringTask.end_time,
+            weight: recurringTask.weight || 1,
             goal_id: recurringTask.goal_id || null,
             milestone_id: recurringTask.milestone_id || null,
             area_id: recurringTask.area_id || null,
@@ -252,6 +253,7 @@ function Dashboard({ session, onAnalytics, onAreas }) {
         priority: task.priority,
         category: task.category,
         estimated_minutes: task.estimated_minutes,
+        weight: task.weight || 1,
         start_time: task.start_time,
         end_time: task.end_time,
         deadline: task.deadline,
@@ -318,6 +320,7 @@ function Dashboard({ session, onAnalytics, onAreas }) {
         priority: task.priority,
         category: task.category,
         estimated_minutes: task.estimated_minutes,
+        weight: task.weight || 1,
         start_time: task.start_time,
         end_time: task.end_time,
         deadline: task.deadline,
@@ -408,6 +411,7 @@ function Dashboard({ session, onAnalytics, onAreas }) {
         priority: task.priority,
         category: task.category || null,
         estimated_minutes: task.estimated_minutes || null,
+        weight: task.weight || 1,
         start_time: task.start_time || null,
         end_time: task.end_time || null,
         deadline: task.deadline || null,
@@ -482,6 +486,7 @@ function Dashboard({ session, onAnalytics, onAreas }) {
       priority: task.priority,
       category: task.category || null,
       estimated_minutes: task.estimated_minutes || null,
+      weight: task.weight || 1,
       start_time: task.start_time || null,
       end_time: task.end_time || null,
       deadline: task.deadline || null,
@@ -900,7 +905,8 @@ function Dashboard({ session, onAnalytics, onAreas }) {
     newTitle,
     startTime,
     endTime,
-    deadline
+    deadline,
+    weight = 1
   ) {
     setActionError('')
     if (
@@ -914,6 +920,17 @@ function Dashboard({ session, onAnalytics, onAreas }) {
       return
     }
 
+    const numericWeight = Number(weight)
+
+    if (
+      !Number.isInteger(numericWeight) ||
+      numericWeight < 1 ||
+      numericWeight > 4
+    ) {
+      window.alert('Weight must be between 1 and 4.')
+      return
+    }
+
     if (!task.recurring_task_id) {
       const { error } = await supabase
         .from('tasks')
@@ -923,7 +940,9 @@ function Dashboard({ session, onAnalytics, onAreas }) {
             startTime || null,
           end_time:
             endTime || null,
-          deadline: deadline || null
+          deadline: deadline || null,
+          weight: numericWeight,
+          weight: numericWeight
         })
         .eq('id', task.id)
 
@@ -953,7 +972,8 @@ function Dashboard({ session, onAnalytics, onAreas }) {
             startTime || null,
           end_time:
             endTime || null,
-          deadline: deadline || null
+          deadline: deadline || null,
+          weight: numericWeight
         })
         .eq('id', task.id)
 
@@ -1013,7 +1033,8 @@ function Dashboard({ session, onAnalytics, onAreas }) {
             startTime || null,
           end_time:
             endTime || null,
-          deadline: deadline || null
+          deadline: deadline || null,
+          weight: numericWeight
         })
         .eq(
           'recurring_task_id',
@@ -1284,14 +1305,28 @@ function Dashboard({ session, onAnalytics, onAreas }) {
   const totalTasks =
     tasks.length
 
+  const totalWeight =
+    tasks.reduce(
+      (sum, task) =>
+        sum + (task.weight || 1),
+      0
+    )
+
+  const completedWeight =
+    tasks.reduce(
+      (sum, task) =>
+        sum +
+        (task.completed
+          ? (task.weight || 1)
+          : 0),
+      0
+    )
+
   const progress =
-    totalTasks === 0
+    totalWeight === 0
       ? 0
       : Math.round(
-          (
-            completedTasks /
-            totalTasks
-          ) * 100
+          (completedWeight / totalWeight) * 100
         )
 
   return (
@@ -1446,11 +1481,11 @@ function Dashboard({ session, onAnalytics, onAreas }) {
             >
               <div className="progress-inner">
                 <strong>
-                  {completedTasks}
+                  {completedWeight}
                 </strong>
 
                 <span>
-                  /{totalTasks}
+                  /{totalWeight}
                 </span>
               </div>
             </div>

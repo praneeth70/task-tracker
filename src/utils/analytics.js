@@ -51,16 +51,40 @@ export function buildDailyData(tasks, startDate, endDate) {
       task => task.completed
     ).length
 
+    const totalWeight = dayTasks.reduce(
+      (sum, task) =>
+        sum + (Number(task.weight) || 1),
+      0
+    )
+
+    const completedWeight = dayTasks
+      .filter(task => task.completed)
+      .reduce(
+        (sum, task) =>
+          sum + (Number(task.weight) || 1),
+        0
+      )
+
+    const completion =
+      totalWeight === 0
+        ? null
+        : Math.round(
+            (completedWeight / totalWeight) * 100
+          )
+
     data.push({
       date,
       label: date.slice(5),
+
+      // Actual task counts
       total,
       completed,
       incomplete: total - completed,
-      completion:
-        total === 0
-          ? null
-          : Math.round((completed / total) * 100)
+
+      // Weight-based progress
+      totalWeight,
+      completedWeight,
+      completion
     })
   }
 

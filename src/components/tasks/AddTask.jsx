@@ -9,6 +9,7 @@ function AddTask({
   const [title, setTitle] = useState('')
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
+  const [weight, setWeight] = useState(1)
   const [loading, setLoading] = useState(false)
 
   function validateTask() {
@@ -25,6 +26,19 @@ function AddTask({
       return false
     }
 
+    const numericWeight = Number(weight)
+
+    if (
+      !Number.isInteger(numericWeight) ||
+      numericWeight < 1 ||
+      numericWeight > 4
+    ) {
+      window.alert(
+        'Weight must be between 1 and 4.'
+      )
+      return false
+    }
+
     return true
   }
 
@@ -32,6 +46,7 @@ function AddTask({
     setTitle('')
     setStartTime('')
     setEndTime('')
+    setWeight(1)
   }
 
   async function createTask() {
@@ -46,7 +61,8 @@ function AddTask({
         title: title.trim(),
         task_date: taskDate,
         start_time: startTime || null,
-        end_time: endTime || null
+        end_time: endTime || null,
+        weight: Number(weight)
       })
 
     if (error) {
@@ -86,7 +102,8 @@ function AddTask({
         days_of_week: [dayOfWeek],
         start_date: taskDate,
         start_time: startTime || null,
-        end_time: endTime || null
+        end_time: endTime || null,
+        weight: Number(weight)
       })
       .select()
       .single()
@@ -112,7 +129,8 @@ function AddTask({
           start_time:
             startTime || null,
           end_time:
-            endTime || null
+            endTime || null,
+          weight: Number(weight)
         })
 
     if (taskError) {
@@ -200,6 +218,22 @@ function AddTask({
         disabled={loading}
         title="Finish time"
       />
+
+      <select
+        className="task-weight"
+        value={weight}
+        onChange={e =>
+          setWeight(Number(e.target.value))
+        }
+        disabled={loading}
+        title="Task weight"
+        aria-label="Task weight"
+      >
+        <option value={1}>1 · Normal</option>
+        <option value={2}>2 · Work / Gym</option>
+        <option value={3}>3 · Study</option>
+        <option value={4}>4 · Project</option>
+      </select>
 
       <button
         type="submit"
