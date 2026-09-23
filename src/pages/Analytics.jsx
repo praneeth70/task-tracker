@@ -247,6 +247,8 @@ function Analytics({ session, onBack }) {
         percentage={percentage}
         completed={completed}
         total={total}
+        totalWeight={totalWeight}
+        completedWeight={completedWeight}
         focusTime={formatDuration(
           focusSeconds
         )}

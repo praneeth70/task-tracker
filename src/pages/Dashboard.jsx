@@ -31,6 +31,63 @@ function Dashboard({ session, onAnalytics, onAreas }) {
     return `${year}-${month}-${day}`
   }
 
+  function getYearCountdownData() {
+    const today = new Date()
+    const year = 2026
+    const yearStart = new Date(year, 0, 1)
+    const yearEnd = new Date(year, 11, 31)
+    const nextYearStart = new Date(year + 1, 0, 1)
+    const dayMs = 24 * 60 * 60 * 1000
+
+    if (today <= yearEnd) {
+      const daysLeft = Math.ceil(
+        (yearEnd - today) / dayMs
+      )
+
+      const totalDays = Math.round(
+        (yearEnd - yearStart) / dayMs
+      ) + 1
+
+      const elapsedDays = Math.floor(
+        (today - yearStart) / dayMs
+      )
+
+      const progress = Math.min(
+        100,
+        Math.max(
+          0,
+          (elapsedDays / totalDays) * 100
+        )
+      )
+
+      let message = 'DAYS LEFT · 2026'
+
+      if (daysLeft <= 14) {
+        message = 'LAST 2 WEEKS · 2026'
+      } else if (daysLeft <= 30) {
+        message = 'LAST 30 DAYS · 2026'
+      } else if (daysLeft <= 60) {
+        message = 'LAST 60 DAYS · 2026'
+      }
+
+      return {
+        value: daysLeft,
+        label: message,
+        progress
+      }
+    }
+
+    const daysSince = Math.floor(
+      (today - nextYearStart) / dayMs
+    ) + 1
+
+    return {
+      value: -daysSince,
+      label: 'DAYS SINCE 2026 ENDED',
+      progress: 100
+    }
+  }
+
   function changeDate(date, offset) {
     const [year, month, day] = date.split('-').map(Number)
     const newDate = new Date(year, month - 1, day)
@@ -109,7 +166,6 @@ function Dashboard({ session, onAnalytics, onAreas }) {
         .eq('user_id', session.user.id)
         .eq('active', true)
         .contains('days_of_week', [dayOfWeek])
-        .lte('start_date', selectedDate)
 
       if (recurringError) {
         console.error(
@@ -137,7 +193,6 @@ function Dashboard({ session, onAnalytics, onAreas }) {
             task_date: selectedDate,
             start_time: recurringTask.start_time,
             end_time: recurringTask.end_time,
-            weight: recurringTask.weight || 1,
             goal_id: recurringTask.goal_id || null,
             milestone_id: recurringTask.milestone_id || null,
             area_id: recurringTask.area_id || null,
@@ -253,7 +308,6 @@ function Dashboard({ session, onAnalytics, onAreas }) {
         priority: task.priority,
         category: task.category,
         estimated_minutes: task.estimated_minutes,
-        weight: task.weight || 1,
         start_time: task.start_time,
         end_time: task.end_time,
         deadline: task.deadline,
@@ -320,7 +374,6 @@ function Dashboard({ session, onAnalytics, onAreas }) {
         priority: task.priority,
         category: task.category,
         estimated_minutes: task.estimated_minutes,
-        weight: task.weight || 1,
         start_time: task.start_time,
         end_time: task.end_time,
         deadline: task.deadline,
@@ -411,7 +464,6 @@ function Dashboard({ session, onAnalytics, onAreas }) {
         priority: task.priority,
         category: task.category || null,
         estimated_minutes: task.estimated_minutes || null,
-        weight: task.weight || 1,
         start_time: task.start_time || null,
         end_time: task.end_time || null,
         deadline: task.deadline || null,
@@ -486,7 +538,6 @@ function Dashboard({ session, onAnalytics, onAreas }) {
       priority: task.priority,
       category: task.category || null,
       estimated_minutes: task.estimated_minutes || null,
-      weight: task.weight || 1,
       start_time: task.start_time || null,
       end_time: task.end_time || null,
       deadline: task.deadline || null,
@@ -905,8 +956,7 @@ function Dashboard({ session, onAnalytics, onAreas }) {
     newTitle,
     startTime,
     endTime,
-    deadline,
-    weight = 1
+    deadline
   ) {
     setActionError('')
     if (
@@ -920,17 +970,6 @@ function Dashboard({ session, onAnalytics, onAreas }) {
       return
     }
 
-    const numericWeight = Number(weight)
-
-    if (
-      !Number.isInteger(numericWeight) ||
-      numericWeight < 1 ||
-      numericWeight > 4
-    ) {
-      window.alert('Weight must be between 1 and 4.')
-      return
-    }
-
     if (!task.recurring_task_id) {
       const { error } = await supabase
         .from('tasks')
@@ -940,9 +979,7 @@ function Dashboard({ session, onAnalytics, onAreas }) {
             startTime || null,
           end_time:
             endTime || null,
-          deadline: deadline || null,
-          weight: numericWeight,
-          weight: numericWeight
+          deadline: deadline || null
         })
         .eq('id', task.id)
 
@@ -972,8 +1009,7 @@ function Dashboard({ session, onAnalytics, onAreas }) {
             startTime || null,
           end_time:
             endTime || null,
-          deadline: deadline || null,
-          weight: numericWeight
+          deadline: deadline || null
         })
         .eq('id', task.id)
 
@@ -1033,8 +1069,7 @@ function Dashboard({ session, onAnalytics, onAreas }) {
             startTime || null,
           end_time:
             endTime || null,
-          deadline: deadline || null,
-          weight: numericWeight
+          deadline: deadline || null
         })
         .eq(
           'recurring_task_id',
@@ -1305,28 +1340,14 @@ function Dashboard({ session, onAnalytics, onAreas }) {
   const totalTasks =
     tasks.length
 
-  const totalWeight =
-    tasks.reduce(
-      (sum, task) =>
-        sum + (task.weight || 1),
-      0
-    )
-
-  const completedWeight =
-    tasks.reduce(
-      (sum, task) =>
-        sum +
-        (task.completed
-          ? (task.weight || 1)
-          : 0),
-      0
-    )
-
   const progress =
-    totalWeight === 0
+    totalTasks === 0
       ? 0
       : Math.round(
-          (completedWeight / totalWeight) * 100
+          (
+            completedTasks /
+            totalTasks
+          ) * 100
         )
 
   return (
@@ -1338,20 +1359,49 @@ function Dashboard({ session, onAnalytics, onAreas }) {
 
       <main className="dashboard">
 
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '40px' }}>
-          <button
-            className="analytics-button"
-            onClick={onAnalytics}
-          >
-            Analytics
-          </button>
+        <div className="dashboard-top-bar">
+          <div className="dashboard-navigation">
+            <button
+              className="analytics-button"
+              onClick={onAnalytics}
+            >
+              Analytics
+            </button>
 
-          <button
-            className="analytics-button"
-            onClick={onAreas}
-          >
-            Areas
-          </button>
+            <button
+              className="analytics-button"
+              onClick={onAreas}
+            >
+              Areas
+            </button>
+          </div>
+
+          <div className="year-countdown">
+            {(() => {
+              const yearCountdown = getYearCountdownData()
+
+              return (
+                <>
+                  <strong>
+                    {yearCountdown.value}
+                  </strong>
+
+                  <span>
+                    {yearCountdown.label}
+                  </span>
+
+                  <div className="year-progress">
+                    <div
+                      className="year-progress-fill"
+                      style={{
+                        width: `${yearCountdown.progress}%`
+                      }}
+                    />
+                  </div>
+                </>
+              )
+            })()}
+          </div>
         </div>
 
         <div className="date-navigation">
@@ -1481,11 +1531,11 @@ function Dashboard({ session, onAnalytics, onAreas }) {
             >
               <div className="progress-inner">
                 <strong>
-                  {completedWeight}
+                  {completedTasks}
                 </strong>
 
                 <span>
-                  /{totalWeight}
+                  /{totalTasks}
                 </span>
               </div>
             </div>

@@ -2,6 +2,8 @@ function AnalyticsStats({
   percentage,
   completed,
   total,
+  totalWeight,
+  completedWeight,
   focusTime,
   activeDays
 }) {
@@ -18,23 +20,48 @@ function AnalyticsStats({
       <div className="analytics-numbers">
 
         <div>
-          <strong>{completed}</strong>
-          <span>completed</span>
+          <strong>
+            {completed}
+          </strong>
+          <span>
+            completed
+          </span>
         </div>
 
         <div>
-          <strong>{total}</strong>
-          <span>planned</span>
+          <strong>
+            {total}
+          </strong>
+          <span>
+            planned
+          </span>
         </div>
 
         <div>
-          <strong>{focusTime}</strong>
-          <span>focused</span>
+          <strong>
+            {completedWeight}/{totalWeight}
+          </strong>
+          <span>
+            weight completed
+          </span>
         </div>
 
         <div>
-          <strong>{activeDays}</strong>
-          <span>active days</span>
+          <strong>
+            {focusTime}
+          </strong>
+          <span>
+            focused
+          </span>
+        </div>
+
+        <div>
+          <strong>
+            {activeDays}
+          </strong>
+          <span>
+            active days
+          </span>
         </div>
 
       </div>

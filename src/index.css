@@ -1470,3 +1470,110 @@ input::placeholder {
   line-height: 1.2;
   letter-spacing: 0.02em;
 }
+/* =========================
+   DASHBOARD TOP BAR
+========================= */
+
+.dashboard-top-bar {
+  max-width: 1100px;
+  margin: 0 auto 40px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.dashboard-navigation {
+  display: flex;
+  gap: 12px;
+}
+
+.year-countdown {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 110px;
+}
+
+.year-countdown strong {
+  color: #d8e3cf;
+  font-size: 28px;
+  line-height: 1;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.year-countdown span {
+  color: #9aa296;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+
+/* =========================
+   YEAR COUNTDOWN FOCUS
+========================= */
+
+.year-countdown strong {
+  text-shadow: 0 0 18px rgba(216, 227, 207, 0.08);
+}
+
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 600px) {
+  .dashboard-top-bar {
+    align-items: center;
+    margin-bottom: 32px;
+    gap: 16px;
+  }
+
+  .dashboard-navigation {
+    gap: 8px;
+  }
+
+  .year-countdown {
+    min-width: auto;
+  }
+
+  .year-countdown strong {
+    font-size: 23px;
+  }
+
+  .year-countdown span {
+    font-size: 8px;
+    letter-spacing: 0.1em;
+  }
+}
+/* =========================
+   YEAR PROGRESS
+========================= */
+
+.year-progress {
+  width: 110px;
+  height: 3px;
+  margin-top: 7px;
+  background: #292d29;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.year-progress-fill {
+  height: 100%;
+  background: #a9b89a;
+  border-radius: inherit;
+  transition: width 0.4s ease;
+}
+
+@media (max-width: 600px) {
+  .year-progress {
+    width: 85px;
+    margin-top: 6px;
+  }
+}
