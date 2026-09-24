@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import Analytics from './pages/Analytics'
 import Areas from './pages/Areas'
 import AreaDetail from './pages/AreaDetail'
+import Streaks from './pages/Streaks'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -67,11 +68,21 @@ function App() {
     )
   }
 
+  if (page === 'streaks') {
+    return (
+      <Streaks
+        session={session}
+        onBack={() => setPage('dashboard')}
+      />
+    )
+  }
+
   return (
     <Dashboard
       session={session}
       onAnalytics={() => setPage('analytics')}
       onAreas={() => setPage('areas')}
+      onStreaks={() => setPage('streaks')}
     />
   )
 }
